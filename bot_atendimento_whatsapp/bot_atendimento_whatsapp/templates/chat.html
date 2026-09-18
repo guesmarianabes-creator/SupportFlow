@@ -806,75 +806,444 @@
 
 <script>
 
-    const messages =
-        document.getElementById("messages");
+alert("JAVASCRIPT FUNCIONANDO!");
 
-    const input =
-        document.getElementById("messageInput");
-
-    const sendButton =
-        document.getElementById("sendButton");
-
-    const typing =
-        document.getElementById("typing");
+const messages = document.getElementById("messages");
+const input = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
+const typing = document.getElementById("typing");
 
 
-    /* =========================
-       ADICIONAR MENSAGEM
-    ========================= */
+function adicionarMensagem(texto, tipo) {
 
-    function adicionarMensagem(texto, tipo) {
+    const message = document.createElement("div");
+    message.className = "message " + tipo;
 
-        const message =
-            document.createElement("div");
+    const content = document.createElement("div");
+    content.className = "message-content";
+    content.textContent = texto;
 
-        message.className =
-            "message " + tipo;
+    message.appendChild(content);
 
-        const content =
-            document.createElement("div");
+    messages.insertBefore(message, typing);
 
-        content.className =
-            "message-content";
+    messages.scrollTop = messages.scrollHeight;
+}
 
-        content.textContent =
-            texto;
 
-        message.appendChild(content);
+function mostrarDigitando() {
 
-        messages.insertBefore(
-            message,
-            typing
+    typing.style.display = "block";
+    messages.scrollTop = messages.scrollHeight;
+
+}
+
+
+function esconderDigitando() {
+
+    typing.style.display = "none";
+
+}
+
+
+/* =========================
+   ENVIAR MENSAGEM
+========================= */
+
+async function enviarMensagem(texto) {
+
+    let mensagem;
+
+    if (typeof texto === "string") {
+        mensagem = texto.trim();
+    } else {
+        mensagem = input.value.trim();
+    }
+
+    if (!mensagem) {
+        return;
+    }
+
+    adicionarMensagem(mensagem, "user");
+
+    input.value = "";
+
+    sendButton.disabled = true;
+
+    mostrarDigitando();
+
+
+    try {
+
+        const resposta = await fetch("/api/mensagem", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                mensagem: mensagem
+            })
+
+        });
+
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                "Servidor respondeu com erro " + resposta.status
+            );
+
+        }
+
+
+        const dados = await resposta.json();
+
+
+        esconderDigitando();
+
+        adicionarMensagem(
+            dados.resposta || "Não recebi uma resposta do servidor.",
+            "bot"
         );
 
-        messages.scrollTop =
-            messages.scrollHeight;
+
+    } catch (erro) {
+
+        console.error("Erro:", erro);
+
+        esconderDigitando();
+
+        adicionarMensagem(
+            "Não foi possível conectar ao sistema. Verifique se o servidor Flask está funcionando.",
+            "bot"
+        );
+
     }
 
 
-    /* =========================
-       DIGITANDO
-    ========================= */
+    sendButton.disabled = false;
 
-    function mostrarDigitando() {
+    input.focus();
 
-        typing.style.display = "block";
+}
 
-        messages.scrollTop =
-            messages.scrollHeight;
+
+/* =========================
+   OPÇÕES RÁPIDAS
+========================= */
+
+function enviarOpcao(opcao) {
+
+    const quickOptions =
+        document.getElementById("quickOptions");
+
+    quickOptions.style.display = "none";
+
+    enviarMensagem(opcao);
+
+}
+
+
+/* =========================
+   FORMULÁRIO DE AGENDAMENTO
+========================= */
+
+function mostrarFormularioAgendamento() {
+
+    const quickOptions =
+        document.getElementById("quickOptions");
+
+    const agendaBox =
+        document.getElementById("agendaBox");
+
+
+    quickOptions.style.display = "none";
+
+    agendaBox.style.display = "block";
+
+
+    adicionarMensagem(
+        "Vamos agendar sua reunião! 📅 Preencha os dados abaixo.",
+        "bot"
+    );
+
+
+    messages.scrollTop =
+        messages.scrollHeight;
+
+}
+
+
+/* =========================
+   FECHAR AGENDAMENTO
+========================= */
+
+function fecharFormularioAgendamento() {
+
+    const agendaBox =
+        document.getElementById("agendaBox");
+
+    agendaBox.style.display = "none";
+
+    mostrarMenu();
+
+}
+
+
+/* =========================
+   CONFIRMAR AGENDAMENTO
+========================= */
+
+async function confirmarAgendamento() {
+
+    const nome =
+        document.getElementById("nome").value.trim();
+
+    const data =
+        document.getElementById("data").value;
+
+    const hora =
+        document.getElementById("hora").value;
+
+    const assunto =
+        document.getElementById("assunto").value.trim();
+
+    const erro =
+        document.getElementById("agendaError");
+
+
+    erro.style.display = "none";
+    erro.textContent = "";
+
+
+    /* VALIDAÇÕES */
+
+    if (!nome) {
+
+        mostrarErro("Digite seu nome.");
+
+        return;
+
     }
 
 
-    function esconderDigitando() {
+    if (!data) {
 
-        typing.style.display = "none";
+        mostrarErro("Escolha uma data.");
+
+        return;
+
     }
 
 
-    /* =========================
-       ENVIAR MENSAGEM
-    ========================= */
+    if (!hora) {
 
-    async function enviarMensagem(texto = null) {
+        mostrarErro("Escolha um horário.");
 
-        const
+        return;
+
+    }
+
+
+    if (!assunto) {
+
+        mostrarErro("Digite o assunto da reunião.");
+
+        return;
+
+    }
+
+
+    /* CONVERTER DATA */
+
+    const partes = data.split("-");
+
+    const dataFormatada =
+        partes[2] + "/" +
+        partes[1] + "/" +
+        partes[0];
+
+
+    /* MENSAGEM QUE O PYTHON JÁ ENTENDE */
+
+    const mensagem =
+        "agendar; " +
+        nome +
+        "; " +
+        dataFormatada +
+        "; " +
+        hora +
+        "; " +
+        assunto;
+
+
+    const agendaBox =
+        document.getElementById("agendaBox");
+
+    agendaBox.style.display = "none";
+
+
+    adicionarMensagem(
+        "Solicitando agendamento...",
+        "user"
+    );
+
+
+    mostrarDigitando();
+
+
+    try {
+
+        const resposta = await fetch("/api/mensagem", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                mensagem: mensagem
+            })
+
+        });
+
+
+        if (!resposta.ok) {
+
+            throw new Error(
+                "Erro HTTP " + resposta.status
+            );
+
+        }
+
+
+        const dados =
+            await resposta.json();
+
+
+        esconderDigitando();
+
+
+        adicionarMensagem(
+            dados.resposta ||
+            "Não foi possível concluir o agendamento.",
+            "bot"
+        );
+
+
+        limparFormulario();
+
+
+    } catch (erro) {
+
+        console.error("Erro:", erro);
+
+        esconderDigitando();
+
+        adicionarMensagem(
+            "Não foi possível realizar o agendamento. Verifique se o servidor está funcionando.",
+            "bot"
+        );
+
+    }
+
+
+    input.focus();
+
+}
+
+
+/* =========================
+   ERRO DO FORMULÁRIO
+========================= */
+
+function mostrarErro(mensagem) {
+
+    const erro =
+        document.getElementById("agendaError");
+
+    erro.textContent = mensagem;
+
+    erro.style.display = "block";
+
+}
+
+
+/* =========================
+   LIMPAR FORMULÁRIO
+========================= */
+
+function limparFormulario() {
+
+    document.getElementById("nome").value = "";
+
+    document.getElementById("data").value = "";
+
+    document.getElementById("hora").value = "";
+
+    document.getElementById("assunto").value = "";
+
+    document.getElementById("agendaError").style.display = "none";
+
+}
+
+
+/* =========================
+   MENU
+========================= */
+
+function mostrarMenu() {
+
+    const quickOptions =
+        document.getElementById("quickOptions");
+
+    const agendaBox =
+        document.getElementById("agendaBox");
+
+
+    agendaBox.style.display = "none";
+
+    quickOptions.style.display = "grid";
+
+}
+
+
+/* =========================
+   PAINEL
+========================= */
+
+function abrirPainel() {
+
+    window.location.href = "/painel";
+
+}
+
+
+/* =========================
+   ENTER
+========================= */
+
+input.addEventListener("keydown", function(event) {
+
+    if (event.key === "Enter") {
+
+        event.preventDefault();
+
+        enviarMensagem();
+
+    }
+
+});
+
+
+input.focus();
+
+</script>
+
+</body>
+
+</html>
